@@ -1,261 +1,541 @@
-const canvas = document.getElementById("gameCanvas");
-const ctx = canvas.getContext("2d");
-
 const scoreEl = document.getElementById("score");
-const timeEl = document.getElementById("time");
-const missEl = document.getElementById("miss");
+const sumEl = document.getElementById("sum");
+const bestEl = document.getElementById("best");
+const muteBtn = document.getElementById("muteBtn");
+const resetBtn = document.getElementById("resetBtn");
 
-const startOverlay = document.getElementById("startOverlay");
-const endOverlay = document.getElementById("endOverlay");
-const endTitle = document.getElementById("endTitle");
-const endMessage = document.getElementById("endMessage");
+const BEST_KEY = "apple10-best-score";
+const COLS = 6;
+const ROWS = 8;
+const CELL_SIZE = 74;
+const GAME_WIDTH = 540;
+const GAME_HEIGHT = 760;
+const BOARD_X = (GAME_WIDTH - COLS * CELL_SIZE) / 2;
+const BOARD_Y = 138;
+const APPLE_RADIUS = 27;
 
-const startBtn = document.getElementById("startBtn");
-const restartBtn = document.getElementById("restartBtn");
-
-const GAME_TIME = 45;
-const MAX_MISS = 5;
-
-let player;
-let apples;
-let score;
-let miss;
-let timeLeft;
-let running = false;
-let keys = {
-  left: false,
-  right: false,
-};
-
-let lastFrameTime = 0;
-let spawnCooldown = 0;
-
-function resetGame() {
-  player = {
-    x: canvas.width / 2 - 45,
-    y: canvas.height - 52,
-    width: 90,
-    height: 18,
-    speed: 360,
-  };
-
-  apples = [];
-  score = 0;
-  miss = 0;
-  timeLeft = GAME_TIME;
-  spawnCooldown = 0;
-  lastFrameTime = 0;
-
-  updateHud();
-  drawScene();
-}
-
-function startGame() {
-  resetGame();
-  running = true;
-  startOverlay.classList.add("hidden");
-  endOverlay.classList.add("hidden");
-  requestAnimationFrame(gameLoop);
-}
-
-function endGame(reason) {
-  running = false;
-  endTitle.textContent = reason === "time" ? "시간 종료" : "실수 한도 초과";
-  endMessage.textContent = `최종 점수 ${score}점! 다시 도전해 보세요.`;
-  endOverlay.classList.remove("hidden");
-}
-
-function updateHud() {
-  scoreEl.textContent = String(score);
-  timeEl.textContent = String(Math.max(0, Math.ceil(timeLeft)));
-  missEl.textContent = `${miss} / ${MAX_MISS}`;
-}
-
-function update(dt) {
-  const intensity = 1 + (GAME_TIME - timeLeft) * 0.018;
-
-  if (keys.left) {
-    player.x -= player.speed * dt;
-  }
-  if (keys.right) {
-    player.x += player.speed * dt;
+class SynthAudio {
+  constructor() {
+    this.ctx = null;
+    this.master = null;
+    this.sfxGain = null;
+    this.bgmGain = null;
+    this.started = false;
+    this.muted = false;
+    this.bgmTimer = null;
+    this.bgmStep = 0;
+    this.bgmPattern = [196.0, 220.0, 246.94, 220.0, 196.0, 164.81, 146.83, 164.81];
   }
 
-  if (player.x < 0) player.x = 0;
-  if (player.x + player.width > canvas.width) {
-    player.x = canvas.width - player.width;
+  ensureContext() {
+    if (this.ctx) return;
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    if (!AudioCtx) return;
+
+    this.ctx = new AudioCtx();
+    this.master = this.ctx.createGain();
+    this.master.gain.value = 0.45;
+
+    this.sfxGain = this.ctx.createGain();
+    this.sfxGain.gain.value = 0.22;
+
+    this.bgmGain = this.ctx.createGain();
+    this.bgmGain.gain.value = 0.12;
+
+    this.sfxGain.connect(this.master);
+    this.bgmGain.connect(this.master);
+    this.master.connect(this.ctx.destination);
   }
 
-  spawnCooldown -= dt;
-  if (spawnCooldown <= 0) {
-    apples.push(createApple(intensity));
-    spawnCooldown = Math.max(0.18, 0.75 / intensity);
-  }
+  unlock() {
+    this.ensureContext();
+    if (!this.ctx) return;
 
-  const catchY = player.y - 4;
-
-  apples.forEach((apple) => {
-    apple.y += apple.speed * dt;
-    apple.rotation += apple.spin * dt;
-  });
-
-  apples = apples.filter((apple) => {
-    const caughtHorizontally =
-      apple.x + apple.radius > player.x && apple.x - apple.radius < player.x + player.width;
-    const caughtVertically = apple.y + apple.radius >= catchY && apple.y - apple.radius <= player.y + player.height;
-
-    if (caughtHorizontally && caughtVertically) {
-      score += 10;
-      return false;
+    if (this.ctx.state === "suspended") {
+      this.ctx.resume();
     }
 
-    if (apple.y - apple.radius > canvas.height) {
-      miss += 1;
-      return false;
+    if (!this.started) {
+      this.started = true;
+      this.startBgmLoop();
+    }
+  }
+
+  setMuted(nextMuted) {
+    this.muted = nextMuted;
+    if (!this.sfxGain || !this.bgmGain) return;
+    this.sfxGain.gain.value = this.muted ? 0 : 0.22;
+    this.bgmGain.gain.value = this.muted ? 0 : 0.12;
+  }
+
+  playTone(freq, duration, type, volume, targetGain) {
+    if (!this.ctx || this.muted) return;
+
+    const now = this.ctx.currentTime;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+
+    osc.type = type;
+    osc.frequency.setValueAtTime(freq, now);
+
+    gain.gain.setValueAtTime(0.0001, now);
+    gain.gain.exponentialRampToValueAtTime(volume, now + 0.01);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+
+    osc.connect(gain);
+    gain.connect(targetGain || this.sfxGain);
+    osc.start(now);
+    osc.stop(now + duration + 0.02);
+  }
+
+  playSuccess(pathLength) {
+    const boost = Math.min(0.25, 0.12 + pathLength * 0.02);
+    this.playTone(523.25, 0.09, "triangle", boost, this.sfxGain);
+    this.playTone(659.25, 0.11, "triangle", boost * 0.9, this.sfxGain);
+    this.playTone(783.99, 0.15, "triangle", boost * 0.7, this.sfxGain);
+  }
+
+  playFail() {
+    this.playTone(170.0, 0.14, "sawtooth", 0.13, this.sfxGain);
+  }
+
+  startBgmLoop() {
+    if (!this.ctx || this.bgmTimer) return;
+
+    this.bgmTimer = window.setInterval(() => {
+      if (!this.ctx || this.muted) return;
+      const note = this.bgmPattern[this.bgmStep % this.bgmPattern.length];
+      this.playTone(note, 0.2, "sine", 0.04, this.bgmGain);
+      this.bgmStep += 1;
+    }, 280);
+  }
+}
+
+class AppleTenScene extends Phaser.Scene {
+  constructor() {
+    super("AppleTenScene");
+
+    this.grid = [];
+    this.selected = [];
+    this.selectedSet = new Set();
+    this.currentSum = 0;
+    this.score = 0;
+    this.bestScore = Number(localStorage.getItem(BEST_KEY) || 0);
+    this.dragging = false;
+    this.busy = false;
+
+    this.audioEngine = new SynthAudio();
+    this.popEmitter = null;
+  }
+
+  preload() {
+    const g = this.make.graphics({ x: 0, y: 0, add: false });
+    g.fillStyle(0xffffff, 1);
+    g.fillCircle(4, 4, 4);
+    g.generateTexture("spark", 8, 8);
+    g.destroy();
+  }
+
+  create() {
+    this.drawBackground();
+    this.createBoardFrame();
+
+    this.popEmitter = this.add.particles(0, 0, "spark", {
+      lifespan: 360,
+      speed: { min: 70, max: 230 },
+      scale: { start: 1, end: 0 },
+      quantity: 0,
+      blendMode: "ADD",
+      gravityY: 360,
+    });
+
+    this.initBoard();
+    this.bindInput();
+    this.hookDomControls();
+    this.refreshHud();
+  }
+
+  drawBackground() {
+    const bg = this.add.graphics();
+    bg.fillGradientStyle(0xdff4ff, 0xdff4ff, 0xf6ffd6, 0xf6ffd6, 1);
+    bg.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+
+    const stripe = this.add.graphics();
+    stripe.fillStyle(0xffffff, 0.2);
+    for (let i = 0; i < 12; i += 1) {
+      stripe.fillRoundedRect(-160 + i * 78, 60, 58, 640, 16);
+    }
+  }
+
+  createBoardFrame() {
+    const frame = this.add.graphics();
+    frame.fillStyle(0xfff4dd, 0.94);
+    frame.lineStyle(6, 0xb96d34, 1);
+    frame.fillRoundedRect(BOARD_X - 16, BOARD_Y - 16, COLS * CELL_SIZE + 32, ROWS * CELL_SIZE + 32, 24);
+    frame.strokeRoundedRect(BOARD_X - 16, BOARD_Y - 16, COLS * CELL_SIZE + 32, ROWS * CELL_SIZE + 32, 24);
+  }
+
+  initBoard() {
+    this.clearSelection();
+
+    if (this.grid.length > 0) {
+      for (let row = 0; row < ROWS; row += 1) {
+        for (let col = 0; col < COLS; col += 1) {
+          const cell = this.grid[row][col];
+          if (cell) {
+            cell.container.destroy();
+          }
+        }
+      }
     }
 
-    return true;
-  });
+    this.grid = [];
 
-  timeLeft -= dt;
+    for (let row = 0; row < ROWS; row += 1) {
+      this.grid[row] = [];
+      for (let col = 0; col < COLS; col += 1) {
+        this.grid[row][col] = this.createCell(row, col, Phaser.Math.Between(1, 9), false);
+      }
+    }
 
-  updateHud();
+    this.cameras.main.flash(250, 255, 250, 240, false);
+  }
 
-  if (miss >= MAX_MISS) {
-    endGame("miss");
-  } else if (timeLeft <= 0) {
-    endGame("time");
+  createCell(row, col, value, dropFromTop) {
+    const pos = this.getCellPosition(row, col);
+    const startY = dropFromTop ? BOARD_Y - Phaser.Math.Between(1, 5) * CELL_SIZE : pos.y;
+
+    const body = this.add.circle(0, 0, APPLE_RADIUS, 0xda3d2d);
+    body.setStrokeStyle(3, 0x992014, 1);
+
+    const shine = this.add.circle(-10, -10, 8, 0xffffff, 0.35);
+    const stem = this.add.rectangle(0, -APPLE_RADIUS - 6, 4, 14, 0x6f401e);
+    const leaf = this.add.ellipse(10, -APPLE_RADIUS - 10, 16, 9, 0x3ea94f);
+
+    const ring = this.add.circle(0, 0, APPLE_RADIUS + 7);
+    ring.setStrokeStyle(4, 0xffd86e, 1);
+    ring.setVisible(false);
+
+    const valueText = this.add.text(0, 2, String(value), {
+      fontFamily: "Black Han Sans",
+      fontSize: "28px",
+      color: "#fff6ec",
+      stroke: "#7a1b11",
+      strokeThickness: 6,
+    });
+    valueText.setOrigin(0.5);
+
+    const container = this.add.container(pos.x, startY, [body, shine, stem, leaf, ring, valueText]);
+    container.setSize(CELL_SIZE, CELL_SIZE);
+    container.setDepth(5 + row);
+
+    if (dropFromTop) {
+      container.alpha = 0;
+      this.tweens.add({
+        targets: container,
+        y: pos.y,
+        alpha: 1,
+        duration: 260,
+        ease: "Back.Out",
+      });
+    }
+
+    return {
+      row,
+      col,
+      value,
+      container,
+      ring,
+    };
+  }
+
+  bindInput() {
+    this.input.on("pointerdown", (pointer) => {
+      if (this.busy) return;
+      this.audioEngine.unlock();
+
+      this.dragging = true;
+      this.clearSelection();
+      this.trySelectAt(pointer);
+    });
+
+    this.input.on("pointermove", (pointer) => {
+      if (!this.dragging || this.busy) return;
+      this.trySelectAt(pointer);
+    });
+
+    this.input.on("pointerup", () => {
+      if (!this.dragging || this.busy) return;
+      this.dragging = false;
+      this.finalizeSelection();
+    });
+
+    this.input.on("pointerupoutside", () => {
+      if (!this.dragging || this.busy) return;
+      this.dragging = false;
+      this.finalizeSelection();
+    });
+  }
+
+  hookDomControls() {
+    muteBtn.addEventListener("click", () => {
+      this.audioEngine.unlock();
+      this.audioEngine.setMuted(!this.audioEngine.muted);
+      muteBtn.textContent = this.audioEngine.muted ? "사운드 켜기" : "사운드 끄기";
+    });
+
+    resetBtn.addEventListener("click", () => {
+      if (this.busy) return;
+      this.audioEngine.unlock();
+      this.clearSelection();
+      this.currentSum = 0;
+      this.score = 0;
+      this.initBoard();
+      this.refreshHud();
+    });
+  }
+
+  refreshHud() {
+    scoreEl.textContent = String(this.score);
+    sumEl.textContent = String(this.currentSum);
+    bestEl.textContent = String(this.bestScore);
+  }
+
+  getCellPosition(row, col) {
+    return {
+      x: BOARD_X + col * CELL_SIZE + CELL_SIZE / 2,
+      y: BOARD_Y + row * CELL_SIZE + CELL_SIZE / 2,
+    };
+  }
+
+  getCellAtPointer(pointer) {
+    const col = Math.floor((pointer.x - BOARD_X) / CELL_SIZE);
+    const row = Math.floor((pointer.y - BOARD_Y) / CELL_SIZE);
+
+    if (row < 0 || row >= ROWS || col < 0 || col >= COLS) return null;
+    return this.grid[row][col];
+  }
+
+  trySelectAt(pointer) {
+    const cell = this.getCellAtPointer(pointer);
+    if (!cell) return;
+
+    const key = `${cell.row}-${cell.col}`;
+    if (this.selectedSet.has(key)) return;
+
+    this.selected.push(cell);
+    this.selectedSet.add(key);
+    this.currentSum += cell.value;
+
+    cell.ring.setVisible(true);
+    this.tweens.add({
+      targets: cell.container,
+      scaleX: 1.08,
+      scaleY: 1.08,
+      duration: 90,
+      ease: "Quad.Out",
+    });
+
+    this.drawTrail();
+    this.refreshHud();
+  }
+
+  drawTrail() {
+    if (this.selected.length < 2) return;
+
+    const from = this.selected[this.selected.length - 2].container;
+    const to = this.selected[this.selected.length - 1].container;
+
+    const trail = this.add.line(0, 0, from.x, from.y, to.x, to.y, 0xffd86e, 0.95);
+    trail.setLineWidth(7, 7);
+    trail.setDepth(20);
+    this.tweens.add({
+      targets: trail,
+      alpha: 0,
+      duration: 260,
+      ease: "Sine.Out",
+      onComplete: () => trail.destroy(),
+    });
+  }
+
+  clearSelection() {
+    for (const cell of this.selected) {
+      if (!cell.container.active) continue;
+      cell.ring.setVisible(false);
+      this.tweens.add({
+        targets: cell.container,
+        scaleX: 1,
+        scaleY: 1,
+        duration: 70,
+      });
+    }
+
+    this.selected.length = 0;
+    this.selectedSet.clear();
+    this.currentSum = 0;
+    this.refreshHud();
+  }
+
+  finalizeSelection() {
+    if (this.selected.length === 0) {
+      this.clearSelection();
+      return;
+    }
+
+    if (this.currentSum !== 10) {
+      this.audioEngine.playFail();
+      this.cameras.main.shake(90, 0.002);
+      this.clearSelection();
+      return;
+    }
+
+    this.busy = true;
+    this.audioEngine.playSuccess(this.selected.length);
+    this.score += this.selected.length * 10;
+    this.bestScore = Math.max(this.bestScore, this.score);
+    localStorage.setItem(BEST_KEY, String(this.bestScore));
+
+    const removed = [...this.selected];
+    this.currentSum = 0;
+    this.refreshHud();
+
+    this.removeCellsWithFx(removed, () => {
+      this.collapseAndRefill(() => {
+        this.clearSelection();
+        this.busy = false;
+      });
+    });
+  }
+
+  removeCellsWithFx(cells, done) {
+    if (cells.length === 0) {
+      done();
+      return;
+    }
+
+    let finished = 0;
+    const target = cells.length;
+
+    this.cameras.main.shake(130, 0.004);
+
+    for (const cell of cells) {
+      this.grid[cell.row][cell.col] = null;
+      this.popEmitter.emitParticleAt(cell.container.x, cell.container.y, 20);
+
+      this.tweens.add({
+        targets: cell.container,
+        angle: Phaser.Math.Between(-35, 35),
+        scale: 1.5,
+        alpha: 0,
+        duration: 220,
+        ease: "Back.In",
+        onComplete: () => {
+          cell.container.destroy();
+          finished += 1;
+          if (finished >= target) {
+            done();
+          }
+        },
+      });
+    }
+
+    const pop = this.add.text(270, 92, `+${cells.length * 10}`, {
+      fontFamily: "Black Han Sans",
+      fontSize: "38px",
+      color: "#cb3b27",
+      stroke: "#fff3d7",
+      strokeThickness: 8,
+    });
+    pop.setOrigin(0.5);
+
+    this.tweens.add({
+      targets: pop,
+      y: 52,
+      alpha: 0,
+      duration: 460,
+      ease: "Cubic.Out",
+      onComplete: () => pop.destroy(),
+    });
+  }
+
+  collapseAndRefill(done) {
+    let tweenCount = 0;
+    let completeCount = 0;
+    const onTweenDone = () => {
+      completeCount += 1;
+      if (completeCount >= tweenCount) {
+        done();
+      }
+    };
+
+    for (let col = 0; col < COLS; col += 1) {
+      const survivors = [];
+      for (let row = ROWS - 1; row >= 0; row -= 1) {
+        const cell = this.grid[row][col];
+        if (cell) survivors.push(cell);
+      }
+
+      let writeRow = ROWS - 1;
+      for (const cell of survivors) {
+        const previousRow = cell.row;
+        this.grid[writeRow][col] = cell;
+        cell.row = writeRow;
+        cell.col = col;
+        cell.container.setDepth(5 + writeRow);
+
+        if (previousRow !== writeRow) {
+          const targetY = this.getCellPosition(writeRow, col).y;
+          tweenCount += 1;
+          this.tweens.add({
+            targets: cell.container,
+            y: targetY,
+            duration: 180 + (writeRow - previousRow) * 28,
+            ease: "Cubic.Out",
+            onComplete: onTweenDone,
+          });
+        }
+
+        writeRow -= 1;
+      }
+
+      while (writeRow >= 0) {
+        const value = Phaser.Math.Between(1, 9);
+        const newCell = this.createCell(writeRow, col, value, true);
+        this.grid[writeRow][col] = newCell;
+        tweenCount += 1;
+        this.tweens.add({
+          targets: newCell.container,
+          y: this.getCellPosition(writeRow, col).y,
+          alpha: 1,
+          duration: 240 + (writeRow + 1) * 26,
+          ease: "Bounce.Out",
+          onComplete: onTweenDone,
+        });
+        writeRow -= 1;
+      }
+    }
+
+    if (tweenCount === 0) {
+      done();
+    }
   }
 }
 
-function createApple(intensity) {
-  const radius = 14 + Math.random() * 6;
-  return {
-    x: radius + Math.random() * (canvas.width - radius * 2),
-    y: -radius - 6,
-    radius,
-    speed: (150 + Math.random() * 110) * intensity,
-    spin: (Math.random() * 3 + 2) * (Math.random() > 0.5 ? 1 : -1),
-    rotation: Math.random() * Math.PI,
-  };
-}
+const game = new Phaser.Game({
+  type: Phaser.AUTO,
+  width: GAME_WIDTH,
+  height: GAME_HEIGHT,
+  parent: "game-root",
+  backgroundColor: "#eef8ff",
+  scene: [AppleTenScene],
+  scale: {
+    mode: Phaser.Scale.FIT,
+    autoCenter: Phaser.Scale.CENTER_BOTH,
+  },
+});
 
-function drawPlayer() {
-  const basketX = player.x;
-  const basketY = player.y;
-
-  ctx.fillStyle = "#915529";
-  ctx.fillRect(basketX, basketY, player.width, player.height);
-
-  ctx.strokeStyle = "#6f3f1d";
-  ctx.lineWidth = 2;
-  for (let i = 8; i < player.width; i += 12) {
-    ctx.beginPath();
-    ctx.moveTo(basketX + i, basketY);
-    ctx.lineTo(basketX + i, basketY + player.height);
-    ctx.stroke();
+window.addEventListener("beforeunload", () => {
+  if (game && game.destroy) {
+    game.destroy(true);
   }
-
-  ctx.beginPath();
-  ctx.strokeStyle = "#5f3f2a";
-  ctx.lineWidth = 4;
-  ctx.arc(basketX + player.width / 2, basketY, player.width * 0.4, Math.PI, 2 * Math.PI);
-  ctx.stroke();
-}
-
-function drawApple(apple) {
-  ctx.save();
-  ctx.translate(apple.x, apple.y);
-  ctx.rotate(apple.rotation);
-
-  ctx.beginPath();
-  ctx.fillStyle = "#d7352a";
-  ctx.arc(0, 0, apple.radius, 0, Math.PI * 2);
-  ctx.fill();
-
-  ctx.beginPath();
-  ctx.fillStyle = "rgba(255,255,255,0.35)";
-  ctx.arc(-apple.radius * 0.3, -apple.radius * 0.35, apple.radius * 0.4, 0, Math.PI * 2);
-  ctx.fill();
-
-  ctx.fillStyle = "#5d3a1f";
-  ctx.fillRect(-1.5, -apple.radius - 6, 3, 10);
-
-  ctx.beginPath();
-  ctx.fillStyle = "#2e8d3f";
-  ctx.ellipse(4, -apple.radius - 6, 8, 4, 0.4, 0, Math.PI * 2);
-  ctx.fill();
-
-  ctx.restore();
-}
-
-function drawBackground() {
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-  ctx.fillStyle = "#dff3ff";
-  ctx.fillRect(0, 0, canvas.width, canvas.height * 0.65);
-
-  ctx.fillStyle = "#7ac95a";
-  ctx.fillRect(0, canvas.height * 0.65, canvas.width, canvas.height * 0.35);
-
-  ctx.fillStyle = "#c9e8fa";
-  for (let i = 0; i < 4; i += 1) {
-    const cx = 80 + i * 110;
-    const cy = 90 + (i % 2) * 20;
-    ctx.beginPath();
-    ctx.arc(cx, cy, 22, 0, Math.PI * 2);
-    ctx.arc(cx + 24, cy + 8, 20, 0, Math.PI * 2);
-    ctx.arc(cx - 22, cy + 10, 17, 0, Math.PI * 2);
-    ctx.fill();
-  }
-}
-
-function drawScene() {
-  drawBackground();
-  apples.forEach(drawApple);
-  drawPlayer();
-}
-
-function gameLoop(timestamp) {
-  if (!running) return;
-
-  if (!lastFrameTime) {
-    lastFrameTime = timestamp;
-  }
-
-  const dt = Math.min(0.033, (timestamp - lastFrameTime) / 1000);
-  lastFrameTime = timestamp;
-
-  update(dt);
-  drawScene();
-
-  if (running) {
-    requestAnimationFrame(gameLoop);
-  }
-}
-
-function handleKeyDown(event) {
-  if (event.code === "ArrowLeft" || event.code === "KeyA") {
-    keys.left = true;
-  }
-  if (event.code === "ArrowRight" || event.code === "KeyD") {
-    keys.right = true;
-  }
-}
-
-function handleKeyUp(event) {
-  if (event.code === "ArrowLeft" || event.code === "KeyA") {
-    keys.left = false;
-  }
-  if (event.code === "ArrowRight" || event.code === "KeyD") {
-    keys.right = false;
-  }
-}
-
-document.addEventListener("keydown", handleKeyDown);
-document.addEventListener("keyup", handleKeyUp);
-
-startBtn.addEventListener("click", startGame);
-restartBtn.addEventListener("click", startGame);
-
-resetGame();
+});

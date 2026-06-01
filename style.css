@@ -1,12 +1,12 @@
 :root {
-  --bg-top: #fff0dd;
-  --bg-bottom: #ffd6a5;
-  --card: rgba(255, 255, 255, 0.8);
-  --text: #3b2f2f;
-  --accent: #d64933;
-  --accent-2: #9f2b1f;
-  --ok: #2d7d46;
-  --shadow: rgba(60, 35, 24, 0.2);
+  --bg-top: #fef2cc;
+  --bg-mid: #ffd79d;
+  --bg-bottom: #f6a268;
+  --card: rgba(255, 255, 255, 0.86);
+  --text: #35261f;
+  --accent: #cb3b27;
+  --accent-2: #8f2317;
+  --shadow: rgba(68, 33, 18, 0.24);
 }
 
 * {
@@ -19,26 +19,26 @@ body {
   font-family: "Gowun Dodum", sans-serif;
   color: var(--text);
   background:
-    radial-gradient(circle at 20% 20%, rgba(255, 255, 255, 0.65) 0 18%, transparent 19%),
-    radial-gradient(circle at 80% 30%, rgba(255, 255, 255, 0.45) 0 14%, transparent 15%),
-    linear-gradient(160deg, var(--bg-top), var(--bg-bottom));
+    radial-gradient(circle at 20% 16%, rgba(255, 255, 255, 0.62) 0 17%, transparent 18%),
+    radial-gradient(circle at 82% 28%, rgba(255, 255, 255, 0.42) 0 14%, transparent 15%),
+    linear-gradient(165deg, var(--bg-top) 0%, var(--bg-mid) 48%, var(--bg-bottom) 100%);
   display: grid;
   place-items: center;
-  padding: 16px;
+  padding: 14px;
 }
 
 .game-shell {
-  width: min(100%, 560px);
+  width: min(100%, 620px);
   display: grid;
-  gap: 12px;
+  gap: 14px;
 }
 
 .hud {
   background: var(--card);
   border: 2px solid rgba(255, 255, 255, 0.7);
-  border-radius: 20px;
-  padding: 12px 16px;
-  box-shadow: 0 10px 24px var(--shadow);
+  border-radius: 22px;
+  padding: 13px 16px 14px;
+  box-shadow: 0 12px 30px var(--shadow);
 }
 
 .hud h1 {
@@ -52,13 +52,13 @@ body {
   margin-top: 10px;
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
+  gap: 10px;
 }
 
 .stat {
-  background: rgba(255, 255, 255, 0.7);
+  background: rgba(255, 255, 255, 0.72);
   border-radius: 12px;
-  padding: 8px;
+  padding: 8px 6px;
   text-align: center;
 }
 
@@ -72,55 +72,53 @@ body {
   color: var(--accent-2);
 }
 
+.controls {
+  margin-top: 10px;
+  display: flex;
+  gap: 8px;
+}
+
 .board-wrap {
   position: relative;
   border-radius: 22px;
   overflow: hidden;
-  box-shadow: 0 18px 30px var(--shadow);
+  box-shadow: 0 20px 36px var(--shadow);
+  background: linear-gradient(180deg, #e8f6ff, #f6ffe9);
 }
 
-canvas {
+#game-root {
   width: 100%;
-  height: auto;
+  aspect-ratio: 540 / 760;
+  min-height: 520px;
+}
+
+#game-root canvas {
+  width: 100% !important;
+  height: 100% !important;
   display: block;
-  background: linear-gradient(#dff3ff 0 65%, #7ac95a 65% 100%);
+  touch-action: none;
 }
 
-.overlay {
-  position: absolute;
-  inset: 0;
-  display: grid;
-  place-content: center;
+.hint {
+  margin: 0;
+  padding: 0 4px;
   text-align: center;
-  gap: 8px;
-  padding: 20px;
-  background: rgba(255, 255, 255, 0.78);
-  backdrop-filter: blur(3px);
-}
-
-.overlay h2 {
-  margin: 0;
-  font-size: clamp(24px, 5vw, 30px);
-  font-family: "Black Han Sans", sans-serif;
-  color: var(--accent-2);
-}
-
-.overlay p {
-  margin: 0;
+  font-size: 14px;
+  line-height: 1.45;
+  color: rgba(53, 38, 31, 0.9);
 }
 
 button {
-  margin-top: 10px;
-  justify-self: center;
+  margin: 0;
   border: none;
-  border-radius: 999px;
-  padding: 12px 26px;
-  font-size: 16px;
+  border-radius: 12px;
+  padding: 10px 16px;
+  font-size: 15px;
   font-weight: 700;
   background: var(--accent);
   color: #fff;
   cursor: pointer;
-  box-shadow: 0 6px 14px rgba(214, 73, 51, 0.35);
+  box-shadow: 0 6px 14px rgba(186, 67, 48, 0.3);
   transition: transform 120ms ease, filter 120ms ease;
 }
 
@@ -133,13 +131,17 @@ button:active {
   transform: translateY(1px);
 }
 
-.hidden {
-  display: none;
-}
-
 @media (max-width: 480px) {
   .stats {
     grid-template-columns: 1fr;
+  }
+
+  .controls {
+    flex-direction: column;
+  }
+
+  button {
+    width: 100%;
   }
 
   .hud {
@@ -148,5 +150,9 @@ button:active {
 
   .board-wrap {
     border-radius: 16px;
+  }
+
+  #game-root {
+    min-height: 440px;
   }
 }

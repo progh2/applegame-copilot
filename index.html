@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>사과 받기 게임</title>
+    <title>사과 합 10 퍼즐</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -11,32 +11,28 @@
       rel="stylesheet"
     />
     <link rel="stylesheet" href="style.css" />
+    <script src="https://cdn.jsdelivr.net/npm/phaser@3.90.0/dist/phaser.min.js"></script>
   </head>
   <body>
     <main class="game-shell">
       <header class="hud">
-        <h1>사과 받기 게임</h1>
+        <h1>사과 합 10 퍼즐</h1>
         <div class="stats">
           <div class="stat"><span>점수</span><strong id="score">0</strong></div>
-          <div class="stat"><span>남은 시간</span><strong id="time">45</strong></div>
-          <div class="stat"><span>실수</span><strong id="miss">0 / 5</strong></div>
+          <div class="stat"><span>현재 합</span><strong id="sum">0</strong></div>
+          <div class="stat"><span>최고 점수</span><strong id="best">0</strong></div>
+        </div>
+        <div class="controls">
+          <button id="muteBtn" type="button">사운드 끄기</button>
+          <button id="resetBtn" type="button">보드 리셋</button>
         </div>
       </header>
 
-      <section class="board-wrap">
-        <canvas id="gameCanvas" width="480" height="640" aria-label="사과게임 캔버스"></canvas>
-        <div class="overlay" id="startOverlay">
-          <h2>사과를 최대한 많이 받아보세요!</h2>
-          <p>이동: ← → 또는 A / D</p>
-          <p>한 번 놓칠 때마다 실수가 올라갑니다. 5번 실수하면 종료됩니다.</p>
-          <button id="startBtn">게임 시작</button>
-        </div>
-        <div class="overlay hidden" id="endOverlay">
-          <h2 id="endTitle">게임 종료</h2>
-          <p id="endMessage"></p>
-          <button id="restartBtn">다시 하기</button>
-        </div>
+      <section class="board-wrap" aria-label="사과 숫자 퍼즐 보드">
+        <div id="game-root"></div>
       </section>
+
+      <p class="hint">드래그로 숫자 사과를 연결하고, 합이 정확히 10이면 사과가 터집니다.</p>
     </main>
 
     <script src="game.js"></script>
