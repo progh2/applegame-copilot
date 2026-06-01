@@ -13,6 +13,17 @@ const GAME_HEIGHT = 760;
 const BOARD_X = (GAME_WIDTH - COLS * CELL_SIZE) / 2;
 const BOARD_Y = 138;
 const APPLE_RADIUS = 27;
+const NUMBER_WEIGHTS = [
+  { value: 1, weight: 7 },
+  { value: 2, weight: 10 },
+  { value: 3, weight: 12 },
+  { value: 4, weight: 14 },
+  { value: 5, weight: 10 },
+  { value: 6, weight: 14 },
+  { value: 7, weight: 12 },
+  { value: 8, weight: 10 },
+  { value: 9, weight: 7 },
+];
 
 class SynthAudio {
   constructor() {
@@ -226,7 +237,7 @@ class AppleTenScene extends Phaser.Scene {
     for (let row = 0; row < ROWS; row += 1) {
       this.grid[row] = [];
       for (let col = 0; col < COLS; col += 1) {
-        this.grid[row][col] = this.createCell(row, col, Phaser.Math.Between(1, 9), false);
+        this.grid[row][col] = this.createCell(row, col, this.getWeightedValue(), false);
       }
     }
 
@@ -537,7 +548,7 @@ class AppleTenScene extends Phaser.Scene {
       }
 
       while (writeRow >= 0) {
-        const value = Phaser.Math.Between(1, 9);
+        const value = this.getWeightedValue();
         const newCell = this.createCell(writeRow, col, value, true);
         this.grid[writeRow][col] = newCell;
         tweenCount += 1;
@@ -556,6 +567,20 @@ class AppleTenScene extends Phaser.Scene {
     if (tweenCount === 0) {
       done();
     }
+  }
+
+  getWeightedValue() {
+    const totalWeight = NUMBER_WEIGHTS.reduce((sum, item) => sum + item.weight, 0);
+    let roll = Math.random() * totalWeight;
+
+    for (const item of NUMBER_WEIGHTS) {
+      roll -= item.weight;
+      if (roll <= 0) {
+        return item.value;
+      }
+    }
+
+    return 5;
   }
 
   showComboFeedback(earnedScore, combo) {
