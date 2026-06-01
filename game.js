@@ -35,6 +35,7 @@ class SynthAudio {
     this.bgmGain = null;
     this.started = false;
     this.muted = false;
+    this.paused = false;
     this.bgmTimer = null;
     this.bgmStep = 0;
     this.bgmIntervalMs = 240;
@@ -48,6 +49,8 @@ class SynthAudio {
       { lead: 440.0, bass: 220.0 },
       { lead: 392.0, bass: 196.0 },
     ];
+    this.sfxBase = 0.22;
+    this.bgmBase = 0.12;
   }
 
   ensureContext() {
@@ -60,10 +63,10 @@ class SynthAudio {
     this.master.gain.value = 0.45;
 
     this.sfxGain = this.ctx.createGain();
-    this.sfxGain.gain.value = 0.22;
+    this.sfxGain.gain.value = this.sfxBase;
 
     this.bgmGain = this.ctx.createGain();
-    this.bgmGain.gain.value = 0.12;
+    this.bgmGain.gain.value = this.bgmBase;
 
     this.sfxGain.connect(this.master);
     this.bgmGain.connect(this.master);
@@ -87,8 +90,19 @@ class SynthAudio {
   setMuted(nextMuted) {
     this.muted = nextMuted;
     if (!this.sfxGain || !this.bgmGain) return;
-    this.sfxGain.gain.value = this.muted ? 0 : 0.22;
-    this.bgmGain.gain.value = this.muted ? 0 : 0.12;
+    this.sfxGain.gain.value = this.muted ? 0 : this.sfxBase;
+    this.bgmGain.gain.value = this.muted ? 0 : this.paused ? 0 : this.bgmBase;
+  }
+
+  setPaused(nextPaused, fadeSec = 0.36) {
+    this.paused = nextPaused;
+    if (!this.ctx || !this.bgmGain || this.muted) return;
+
+    const now = this.ctx.currentTime;
+    const target = this.paused ? 0.0001 : this.bgmBase;
+    this.bgmGain.gain.cancelScheduledValues(now);
+    this.bgmGain.gain.setValueAtTime(Math.max(0.0001, this.bgmGain.gain.value), now);
+    this.bgmGain.gain.exponentialRampToValueAtTime(target, now + fadeSec);
   }
 
   playTone(freq, duration, type, volume, targetGain) {
@@ -391,6 +405,7 @@ class AppleTenScene extends Phaser.Scene {
   hookDomControls() {
     startBtn.addEventListener("click", () => {
       this.audioEngine.unlock();
+      this.audioEngine.setPaused(false);
       this.isStarted = true;
       this.isPaused = false;
       this.hideStatusOverlay();
@@ -403,10 +418,12 @@ class AppleTenScene extends Phaser.Scene {
 
       this.isPaused = !this.isPaused;
       if (this.isPaused) {
+        this.audioEngine.setPaused(true);
         this.dragging = false;
         this.clearSelection();
         this.showStatusOverlay("일시 정지");
       } else {
+        this.audioEngine.setPaused(false);
         this.hideStatusOverlay();
       }
       this.syncButtonStates();
@@ -433,6 +450,7 @@ class AppleTenScene extends Phaser.Scene {
     this.combo = 0;
     this.isStarted = true;
     this.isPaused = false;
+    this.audioEngine.setPaused(false);
     this.initBoard();
     this.hideStatusOverlay();
     this.hideTutorialOverlay();
