@@ -736,10 +736,13 @@ class AppleTenScene extends Phaser.Scene {
   }
 
   showComboFeedback(earnedScore, combo) {
+    const label = this.getComboLabel(combo);
+    const multiplier = (1 + Math.min(4, combo - 1) * 0.25).toFixed(2);
+
     if (combo <= 1) {
-      this.comboText.setText("좋아!");
+      this.comboText.setText(`${label}  (+${earnedScore})`);
     } else {
-      this.comboText.setText(`${combo} COMBO x${(1 + Math.min(4, combo - 1) * 0.25).toFixed(2)} (+${earnedScore})`);
+      this.comboText.setText(`${label}  ${combo}콤보 x${multiplier}  (+${earnedScore})`);
     }
 
     this.comboText.setY(86);
@@ -767,9 +770,18 @@ class AppleTenScene extends Phaser.Scene {
       y: 64,
       alpha: 0,
       scale: 1,
-      duration: 620,
+      duration: 760,
       ease: "Cubic.Out",
     });
+  }
+
+  getComboLabel(combo) {
+    if (combo <= 1) return "좋아!";
+    if (combo === 2) return "굿!";
+    if (combo === 3) return "나이스!";
+    if (combo <= 5) return "대박!";
+    if (combo <= 7) return "미쳤다!";
+    return "전설 콤보!";
   }
 }
 
