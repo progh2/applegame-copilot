@@ -4,6 +4,11 @@
 
 브라우저에서 즉시 플레이할 수 있는 정적 웹 게임으로 구성되어 있으며, 간단한 규칙 대비 높은 몰입감과 연속 콤보의 타격감을 목표로 제작했습니다.
 
+## 0) 스크린샷
+
+### 메인 플레이 화면
+![사과 합 10 퍼즐 메인 화면](docs/screenshots/game-main.png)
+
 ## 1) 프로젝트 소개
 
 ### 핵심 재미 포인트
@@ -72,6 +77,44 @@ flowchart LR
 
   Dev --> UC9
   GH --> UC9
+```
+
+## 3-1) 아키텍처 다이어그램
+
+```mermaid
+flowchart TB
+  UI[HTML/CSS HUD\n버튼/점수판]
+  Scene[Phaser Scene\nAppleTenScene]
+  Logic[게임 로직\n선택/합계/판정/낙하/리필]
+  Audio[SynthAudio\nWeb Audio API]
+  Storage[localStorage\n최고 점수]
+  CI[GitHub Actions]
+  Pages[GitHub Pages]
+
+  UI --> Scene
+  Scene --> Logic
+  Scene --> Audio
+  Logic --> Storage
+  CI --> Pages
+```
+
+## 3-2) 파일 구조 다이어그램
+
+```mermaid
+flowchart TD
+  root[applegame]
+  root --> index[index.html]
+  root --> style[style.css]
+  root --> game[game.js]
+  root --> readme[README.md]
+  root --> docs[docs/]
+  docs --> shots[screenshots/]
+  shots --> mainpng[game-main.png]
+  root --> github[.github/]
+  github --> issue[ISSUE_TEMPLATE/]
+  github --> workflows[workflows/]
+  workflows --> deploy[deploy-pages.yml]
+  workflows --> triage[issue-triage.yml]
 ```
 
 ## 4) 코드 핵심 포인트
