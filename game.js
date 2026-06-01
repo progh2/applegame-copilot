@@ -243,7 +243,7 @@ class AppleTenScene extends Phaser.Scene {
   }
 
   createTutorialOverlay() {
-    this.tutorialOverlay = this.add.container(0, 0);
+    this.tutorialOverlay = this.add.layer();
 
     const dim = this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x20120a, 0.5);
     const card = this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2 + 12, 430, 250, 0xfff5e6, 0.96);
@@ -277,7 +277,14 @@ class AppleTenScene extends Phaser.Scene {
     hint.setOrigin(0.5);
 
     this.tutorialOverlay.add([dim, card, title, guide, hint]);
-    this.tutorialOverlay.setDepth(90);
+    this.tutorialOverlay.setDepth(10000);
+    this.bringTutorialToFront();
+  }
+
+  bringTutorialToFront() {
+    if (!this.tutorialOverlay) return;
+    this.tutorialOverlay.setDepth(10000);
+    this.children.bringToTop(this.tutorialOverlay);
   }
 
   drawBackground() {
