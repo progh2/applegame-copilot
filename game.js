@@ -24,7 +24,17 @@ class SynthAudio {
     this.muted = false;
     this.bgmTimer = null;
     this.bgmStep = 0;
-    this.bgmPattern = [196.0, 220.0, 246.94, 220.0, 196.0, 164.81, 146.83, 164.81];
+    this.bgmIntervalMs = 240;
+    this.bgmPattern = [
+      { lead: 261.63, bass: 130.81 },
+      { lead: 329.63, bass: 164.81 },
+      { lead: 392.0, bass: 196.0 },
+      { lead: 329.63, bass: 164.81 },
+      { lead: 293.66, bass: 146.83 },
+      { lead: 369.99, bass: 184.99 },
+      { lead: 440.0, bass: 220.0 },
+      { lead: 392.0, bass: 196.0 },
+    ];
   }
 
   ensureContext() {
@@ -104,10 +114,21 @@ class SynthAudio {
 
     this.bgmTimer = window.setInterval(() => {
       if (!this.ctx || this.muted) return;
-      const note = this.bgmPattern[this.bgmStep % this.bgmPattern.length];
-      this.playTone(note, 0.2, "sine", 0.04, this.bgmGain);
+      const step = this.bgmPattern[this.bgmStep % this.bgmPattern.length];
+      const swingOffset = this.bgmStep % 2 === 0 ? 0 : 0.015;
+
+      this.playTone(step.lead, 0.16, "triangle", 0.06, this.bgmGain);
+      this.playTone(step.bass, 0.13, "sine", 0.045, this.bgmGain);
+
+      if (this.bgmStep % 4 === 1 || this.bgmStep % 4 === 3) {
+        window.setTimeout(() => {
+          if (!this.ctx || this.muted) return;
+          this.playTone(step.lead * 1.5, 0.11 + swingOffset, "sine", 0.03, this.bgmGain);
+        }, 70);
+      }
+
       this.bgmStep += 1;
-    }, 280);
+    }, this.bgmIntervalMs);
   }
 }
 
