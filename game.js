@@ -166,6 +166,7 @@ class AppleTenScene extends Phaser.Scene {
     this.comboBadge = null;
     this.statusBadge = null;
     this.statusText = null;
+    this.tutorialOverlay = null;
   }
 
   preload() {
@@ -205,6 +206,8 @@ class AppleTenScene extends Phaser.Scene {
     this.comboText.setOrigin(0.5);
     this.comboText.setAlpha(0);
 
+    this.createTutorialOverlay();
+
     this.statusBadge = this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, 360, 70, 0x2d1e15, 0.8);
     this.statusBadge.setStrokeStyle(3, 0xffd79d, 0.95);
 
@@ -217,11 +220,50 @@ class AppleTenScene extends Phaser.Scene {
       align: "center",
     });
     this.statusText.setOrigin(0.5);
+    this.hideStatusOverlay();
 
     this.bindInput();
     this.hookDomControls();
     this.syncButtonStates();
     this.refreshHud();
+  }
+
+  createTutorialOverlay() {
+    this.tutorialOverlay = this.add.container(0, 0);
+
+    const dim = this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x20120a, 0.5);
+    const card = this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2 + 12, 430, 250, 0xfff5e6, 0.96);
+    card.setStrokeStyle(4, 0xb96d34, 1);
+
+    const title = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 - 78, "플레이 방법", {
+      fontFamily: "Black Han Sans",
+      fontSize: "40px",
+      color: "#7b2b1a",
+      stroke: "#fffaf0",
+      strokeThickness: 6,
+    });
+    title.setOrigin(0.5);
+
+    const guide = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 - 8, "1) 숫자 사과를 드래그해서 연결\n2) 합이 10이면 사과가 터짐\n3) 위 사과가 내려와 빈칸 채움", {
+      fontFamily: "Gowun Dodum",
+      fontSize: "28px",
+      color: "#3d2a22",
+      align: "center",
+      lineSpacing: 10,
+    });
+    guide.setOrigin(0.5);
+
+    const hint = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 + 92, "상단 '게임 시작' 버튼으로 시작", {
+      fontFamily: "Black Han Sans",
+      fontSize: "26px",
+      color: "#cf3f29",
+      stroke: "#fff3df",
+      strokeThickness: 5,
+    });
+    hint.setOrigin(0.5);
+
+    this.tutorialOverlay.add([dim, card, title, guide, hint]);
+    this.tutorialOverlay.setDepth(90);
   }
 
   drawBackground() {
@@ -352,6 +394,7 @@ class AppleTenScene extends Phaser.Scene {
       this.isStarted = true;
       this.isPaused = false;
       this.hideStatusOverlay();
+      this.hideTutorialOverlay();
       this.syncButtonStates();
     });
 
@@ -392,6 +435,7 @@ class AppleTenScene extends Phaser.Scene {
     this.isPaused = false;
     this.initBoard();
     this.hideStatusOverlay();
+    this.hideTutorialOverlay();
     this.syncButtonStates();
     this.refreshHud();
   }
@@ -411,6 +455,22 @@ class AppleTenScene extends Phaser.Scene {
   hideStatusOverlay() {
     this.statusBadge.setVisible(false);
     this.statusText.setVisible(false);
+  }
+
+  hideTutorialOverlay() {
+    if (!this.tutorialOverlay) return;
+
+    if (!this.tutorialOverlay.visible) return;
+
+    this.tweens.add({
+      targets: this.tutorialOverlay,
+      alpha: 0,
+      duration: 220,
+      ease: "Sine.Out",
+      onComplete: () => {
+        this.tutorialOverlay.setVisible(false);
+      },
+    });
   }
 
   refreshHud() {
