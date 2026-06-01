@@ -75,7 +75,22 @@ body {
 .controls {
   margin-top: 10px;
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
+}
+
+.controls button {
+  flex: 1 1 120px;
+}
+
+#startBtn {
+  background: linear-gradient(180deg, #dd4f2f, #bc321f);
+}
+
+#pauseBtn,
+#restartBtn,
+#muteBtn {
+  background: #b9472f;
 }
 
 .board-wrap {

@@ -1,8 +1,10 @@
 const scoreEl = document.getElementById("score");
 const sumEl = document.getElementById("sum");
 const bestEl = document.getElementById("best");
+const startBtn = document.getElementById("startBtn");
+const pauseBtn = document.getElementById("pauseBtn");
+const restartBtn = document.getElementById("restartBtn");
 const muteBtn = document.getElementById("muteBtn");
-const resetBtn = document.getElementById("resetBtn");
 
 const BEST_KEY = "apple10-best-score";
 const COLS = 6;
@@ -156,10 +158,14 @@ class AppleTenScene extends Phaser.Scene {
     this.bestScore = Number(localStorage.getItem(BEST_KEY) || 0);
     this.dragging = false;
     this.busy = false;
+    this.isStarted = false;
+    this.isPaused = false;
 
     this.audioEngine = new SynthAudio();
     this.popEmitter = null;
     this.comboBadge = null;
+    this.statusBadge = null;
+    this.statusText = null;
   }
 
   preload() {
@@ -199,8 +205,22 @@ class AppleTenScene extends Phaser.Scene {
     this.comboText.setOrigin(0.5);
     this.comboText.setAlpha(0);
 
+    this.statusBadge = this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, 360, 70, 0x2d1e15, 0.8);
+    this.statusBadge.setStrokeStyle(3, 0xffd79d, 0.95);
+
+    this.statusText = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2, "게임 시작 버튼을 눌러주세요", {
+      fontFamily: "Black Han Sans",
+      fontSize: "34px",
+      color: "#fff4d1",
+      stroke: "#5f2a18",
+      strokeThickness: 6,
+      align: "center",
+    });
+    this.statusText.setOrigin(0.5);
+
     this.bindInput();
     this.hookDomControls();
+    this.syncButtonStates();
     this.refreshHud();
   }
 
@@ -300,7 +320,7 @@ class AppleTenScene extends Phaser.Scene {
 
   bindInput() {
     this.input.on("pointerdown", (pointer) => {
-      if (this.busy) return;
+      if (this.busy || !this.isStarted || this.isPaused) return;
       this.audioEngine.unlock();
 
       this.dragging = true;
@@ -309,7 +329,7 @@ class AppleTenScene extends Phaser.Scene {
     });
 
     this.input.on("pointermove", (pointer) => {
-      if (!this.dragging || this.busy) return;
+      if (!this.dragging || this.busy || !this.isStarted || this.isPaused) return;
       this.trySelectAt(pointer);
     });
 
@@ -327,22 +347,70 @@ class AppleTenScene extends Phaser.Scene {
   }
 
   hookDomControls() {
+    startBtn.addEventListener("click", () => {
+      this.audioEngine.unlock();
+      this.isStarted = true;
+      this.isPaused = false;
+      this.hideStatusOverlay();
+      this.syncButtonStates();
+    });
+
+    pauseBtn.addEventListener("click", () => {
+      if (!this.isStarted) return;
+
+      this.isPaused = !this.isPaused;
+      if (this.isPaused) {
+        this.dragging = false;
+        this.clearSelection();
+        this.showStatusOverlay("일시 정지");
+      } else {
+        this.hideStatusOverlay();
+      }
+      this.syncButtonStates();
+    });
+
+    restartBtn.addEventListener("click", () => {
+      this.audioEngine.unlock();
+      this.restartGame();
+    });
+
     muteBtn.addEventListener("click", () => {
       this.audioEngine.unlock();
       this.audioEngine.setMuted(!this.audioEngine.muted);
       muteBtn.textContent = this.audioEngine.muted ? "사운드 켜기" : "사운드 끄기";
     });
+  }
 
-    resetBtn.addEventListener("click", () => {
-      if (this.busy) return;
-      this.audioEngine.unlock();
-      this.clearSelection();
-      this.currentSum = 0;
-      this.score = 0;
-      this.combo = 0;
-      this.initBoard();
-      this.refreshHud();
-    });
+  restartGame() {
+    if (this.busy) return;
+
+    this.clearSelection();
+    this.currentSum = 0;
+    this.score = 0;
+    this.combo = 0;
+    this.isStarted = true;
+    this.isPaused = false;
+    this.initBoard();
+    this.hideStatusOverlay();
+    this.syncButtonStates();
+    this.refreshHud();
+  }
+
+  syncButtonStates() {
+    startBtn.disabled = this.isStarted && !this.isPaused;
+    pauseBtn.disabled = !this.isStarted;
+    pauseBtn.textContent = this.isPaused ? "계속" : "멈추기";
+  }
+
+  showStatusOverlay(message) {
+    this.statusText.setText(message);
+    this.statusBadge.setVisible(true);
+    this.statusText.setVisible(true);
+  }
+
+  hideStatusOverlay() {
+    this.statusBadge.setVisible(false);
+    this.statusText.setVisible(false);
   }
 
   refreshHud() {
