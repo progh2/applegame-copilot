@@ -15,6 +15,9 @@ const GAME_HEIGHT = 760;
 const BOARD_X = (GAME_WIDTH - COLS * CELL_SIZE) / 2;
 const BOARD_Y = 102;
 const APPLE_RADIUS = 27;
+const HINT_IDLE_MS = 5000;
+const RING_COLOR_DEFAULT = 0xffd86e;
+const RING_COLOR_HINT = 0x8eeaff;
 const NUMBER_WEIGHTS = [
   { value: 1, weight: 7 },
   { value: 2, weight: 10 },
@@ -174,6 +177,10 @@ class AppleTenScene extends Phaser.Scene {
     this.busy = false;
     this.isStarted = false;
     this.isPaused = false;
+    this.lastInputAt = 0;
+    this.hintActive = false;
+    this.hintedCells = [];
+    this.hintTweens = [];
 
     this.audioEngine = new SynthAudio();
     this.popEmitter = null;
@@ -240,6 +247,22 @@ class AppleTenScene extends Phaser.Scene {
     this.hookDomControls();
     this.syncButtonStates();
     this.refreshHud();
+
+    this.lastInputAt = this.time.now;
+  }
+
+  update() {
+    if (!this.isStarted || this.isPaused || this.busy || this.dragging) {
+      return;
+    }
+
+    if (this.hintActive) {
+      return;
+    }
+
+    if (this.time.now - this.lastInputAt >= HINT_IDLE_MS) {
+      this.showIdleHint();
+    }
   }
 
   createTutorialOverlay() {
@@ -345,7 +368,7 @@ class AppleTenScene extends Phaser.Scene {
     const leaf = this.add.ellipse(10, -APPLE_RADIUS - 10, 16, 9, 0x3ea94f);
 
     const ring = this.add.circle(0, 0, APPLE_RADIUS + 7);
-    ring.setStrokeStyle(4, 0xffd86e, 1);
+    ring.setStrokeStyle(4, RING_COLOR_DEFAULT, 1);
     ring.setVisible(false);
 
     const valueText = this.add.text(0, 2, String(value), {
@@ -385,6 +408,8 @@ class AppleTenScene extends Phaser.Scene {
     this.input.on("pointerdown", (pointer) => {
       if (this.busy || !this.isStarted || this.isPaused) return;
       this.audioEngine.unlock();
+      this.noteActivity();
+      this.clearIdleHint();
 
       this.dragging = true;
       this.clearSelection();
@@ -393,18 +418,21 @@ class AppleTenScene extends Phaser.Scene {
 
     this.input.on("pointermove", (pointer) => {
       if (!this.dragging || this.busy || !this.isStarted || this.isPaused) return;
+      this.noteActivity();
       this.trySelectAt(pointer);
     });
 
     this.input.on("pointerup", () => {
       if (!this.dragging || this.busy) return;
       this.dragging = false;
+      this.noteActivity();
       this.finalizeSelection();
     });
 
     this.input.on("pointerupoutside", () => {
       if (!this.dragging || this.busy) return;
       this.dragging = false;
+      this.noteActivity();
       this.finalizeSelection();
     });
   }
@@ -415,9 +443,11 @@ class AppleTenScene extends Phaser.Scene {
       this.audioEngine.setPaused(false);
       this.isStarted = true;
       this.isPaused = false;
+      this.noteActivity();
       this.hideStatusOverlay();
       this.hideTutorialOverlay();
       this.syncButtonStates();
+      this.checkDeadlockAndRecover();
     });
 
     pauseBtn.addEventListener("click", () => {
@@ -427,10 +457,12 @@ class AppleTenScene extends Phaser.Scene {
       if (this.isPaused) {
         this.audioEngine.setPaused(true);
         this.dragging = false;
+        this.clearIdleHint();
         this.clearSelection();
         this.showStatusOverlay("일시 정지");
       } else {
         this.audioEngine.setPaused(false);
+        this.noteActivity();
         this.hideStatusOverlay();
       }
       this.syncButtonStates();
@@ -438,11 +470,13 @@ class AppleTenScene extends Phaser.Scene {
 
     restartBtn.addEventListener("click", () => {
       this.audioEngine.unlock();
+      this.noteActivity();
       this.restartGame();
     });
 
     muteBtn.addEventListener("click", () => {
       this.audioEngine.unlock();
+      this.noteActivity();
       this.audioEngine.setMuted(!this.audioEngine.muted);
       muteBtn.textContent = this.audioEngine.muted ? "사운드 켜기" : "사운드 끄기";
     });
@@ -452,6 +486,7 @@ class AppleTenScene extends Phaser.Scene {
     if (this.busy) return;
 
     this.clearSelection();
+    this.clearIdleHint();
     this.currentSum = 0;
     this.score = 0;
     this.combo = 0;
@@ -462,6 +497,8 @@ class AppleTenScene extends Phaser.Scene {
     this.hideStatusOverlay();
     this.hideTutorialOverlay();
     this.syncButtonStates();
+    this.noteActivity();
+    this.checkDeadlockAndRecover();
     this.refreshHud();
   }
 
@@ -496,6 +533,10 @@ class AppleTenScene extends Phaser.Scene {
         this.tutorialOverlay.setVisible(false);
       },
     });
+  }
+
+  noteActivity() {
+    this.lastInputAt = this.time.now;
   }
 
   refreshHud() {
@@ -564,7 +605,7 @@ class AppleTenScene extends Phaser.Scene {
   clearSelection() {
     for (const cell of this.selected) {
       if (!cell.container.active) continue;
-      cell.ring.setVisible(false);
+      this.resetCellRing(cell);
       this.tweens.add({
         targets: cell.container,
         scaleX: 1,
@@ -611,6 +652,8 @@ class AppleTenScene extends Phaser.Scene {
       this.collapseAndRefill(() => {
         this.clearSelection();
         this.busy = false;
+        this.noteActivity();
+        this.checkDeadlockAndRecover();
       });
     });
   }
@@ -726,6 +769,166 @@ class AppleTenScene extends Phaser.Scene {
     if (tweenCount === 0) {
       done();
     }
+  }
+
+  resetCellRing(cell) {
+    cell.ring.setVisible(false);
+    cell.ring.setAlpha(1);
+    cell.ring.setStrokeStyle(4, RING_COLOR_DEFAULT, 1);
+  }
+
+  findAnyTenSubsetCells() {
+    const candidates = [];
+    for (let row = 0; row < ROWS; row += 1) {
+      for (let col = 0; col < COLS; col += 1) {
+        const cell = this.grid[row]?.[col];
+        if (cell) {
+          candidates.push(cell);
+        }
+      }
+    }
+
+    const target = 10;
+    const reachable = Array.from({ length: target + 1 }, () => null);
+    reachable[0] = { prev: -1, cellIndex: -1 };
+
+    for (let i = 0; i < candidates.length; i += 1) {
+      const value = candidates[i].value;
+      for (let sum = target; sum >= value; sum -= 1) {
+        if (!reachable[sum] && reachable[sum - value]) {
+          reachable[sum] = { prev: sum - value, cellIndex: i };
+        }
+      }
+    }
+
+    if (!reachable[target]) {
+      return [];
+    }
+
+    const subset = [];
+    let cursor = target;
+    while (cursor > 0) {
+      const node = reachable[cursor];
+      if (!node) break;
+      subset.push(candidates[node.cellIndex]);
+      cursor = node.prev;
+    }
+
+    return subset;
+  }
+
+  checkDeadlockAndRecover() {
+    if (!this.isStarted || this.isPaused || this.busy) {
+      return;
+    }
+
+    const possible = this.findAnyTenSubsetCells();
+    if (possible.length > 0) {
+      return;
+    }
+
+    this.triggerDeadlockRefill();
+  }
+
+  triggerDeadlockRefill() {
+    this.busy = true;
+    this.combo = 0;
+    this.clearSelection();
+    this.clearIdleHint();
+    this.showStatusOverlay("조합 없음!\n새 보드 생성 중");
+
+    const cells = [];
+    for (let row = 0; row < ROWS; row += 1) {
+      for (let col = 0; col < COLS; col += 1) {
+        const cell = this.grid[row]?.[col];
+        if (cell) {
+          cells.push(cell);
+        }
+      }
+    }
+
+    if (cells.length === 0) {
+      this.grid = [];
+      this.initBoard();
+      this.hideStatusOverlay();
+      this.busy = false;
+      this.noteActivity();
+      return;
+    }
+
+    let done = 0;
+    const total = cells.length;
+
+    for (const cell of cells) {
+      this.tweens.add({
+        targets: cell.container,
+        y: GAME_HEIGHT + APPLE_RADIUS + Phaser.Math.Between(12, 70),
+        alpha: 0,
+        angle: Phaser.Math.Between(-20, 20),
+        duration: 260 + Phaser.Math.Between(0, 120),
+        ease: "Quad.In",
+        onComplete: () => {
+          cell.container.destroy();
+          done += 1;
+          if (done >= total) {
+            this.grid = [];
+            this.initBoard();
+            this.hideStatusOverlay();
+            this.busy = false;
+            this.noteActivity();
+            this.checkDeadlockAndRecover();
+          }
+        },
+      });
+    }
+  }
+
+  showIdleHint() {
+    if (this.busy || !this.isStarted || this.isPaused || this.dragging) {
+      return;
+    }
+
+    const subset = this.findAnyTenSubsetCells();
+    if (subset.length === 0) {
+      return;
+    }
+
+    this.hintActive = true;
+    this.hintedCells = subset;
+
+    for (const cell of subset) {
+      cell.ring.setVisible(true);
+      cell.ring.setStrokeStyle(4, RING_COLOR_HINT, 0.95);
+      cell.ring.setAlpha(0.35);
+
+      const tw = this.tweens.add({
+        targets: cell.ring,
+        alpha: { from: 0.25, to: 0.95 },
+        duration: 480,
+        yoyo: true,
+        repeat: -1,
+      });
+      this.hintTweens.push(tw);
+    }
+  }
+
+  clearIdleHint() {
+    if (!this.hintActive && this.hintTweens.length === 0) {
+      return;
+    }
+
+    for (const tw of this.hintTweens) {
+      tw.stop();
+    }
+    this.hintTweens.length = 0;
+
+    for (const cell of this.hintedCells) {
+      if (!cell || !cell.container || !cell.container.active) continue;
+      this.resetCellRing(cell);
+    }
+
+    this.hintedCells = [];
+    this.hintActive = false;
   }
 
   getWeightedValue() {
