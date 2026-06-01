@@ -11,7 +11,7 @@ const CELL_SIZE = 74;
 const GAME_WIDTH = 540;
 const GAME_HEIGHT = 760;
 const BOARD_X = (GAME_WIDTH - COLS * CELL_SIZE) / 2;
-const BOARD_Y = 138;
+const BOARD_Y = 102;
 const APPLE_RADIUS = 27;
 const NUMBER_WEIGHTS = [
   { value: 1, weight: 7 },
@@ -159,6 +159,7 @@ class AppleTenScene extends Phaser.Scene {
 
     this.audioEngine = new SynthAudio();
     this.popEmitter = null;
+    this.comboBadge = null;
   }
 
   preload() {
@@ -183,12 +184,17 @@ class AppleTenScene extends Phaser.Scene {
     });
 
     this.initBoard();
+
+    this.comboBadge = this.add.rectangle(GAME_WIDTH / 2, 86, 360, 52, 0x2f2016, 0.82);
+    this.comboBadge.setStrokeStyle(3, 0xffdc9f, 0.95);
+    this.comboBadge.setVisible(false);
+
     this.comboText = this.add.text(GAME_WIDTH / 2, 88, "", {
       fontFamily: "Black Han Sans",
-      fontSize: "34px",
-      color: "#d6542f",
-      stroke: "#fff3dc",
-      strokeThickness: 7,
+      fontSize: "30px",
+      color: "#fff6d8",
+      stroke: "#6f2a19",
+      strokeThickness: 6,
     });
     this.comboText.setOrigin(0.5);
     this.comboText.setAlpha(0);
@@ -590,16 +596,32 @@ class AppleTenScene extends Phaser.Scene {
       this.comboText.setText(`${combo} COMBO x${(1 + Math.min(4, combo - 1) * 0.25).toFixed(2)} (+${earnedScore})`);
     }
 
-    this.comboText.setY(88);
+    this.comboText.setY(86);
     this.comboText.setAlpha(1);
     this.comboText.setScale(0.65);
+    this.comboBadge.setY(86);
+    this.comboBadge.setAlpha(1);
+    this.comboBadge.setScale(0.65);
+    this.comboBadge.setVisible(true);
+
+    this.tweens.add({
+      targets: this.comboBadge,
+      y: 64,
+      alpha: 0,
+      scale: 1,
+      duration: 620,
+      ease: "Cubic.Out",
+      onComplete: () => {
+        this.comboBadge.setVisible(false);
+      },
+    });
 
     this.tweens.add({
       targets: this.comboText,
-      y: 58,
+      y: 64,
       alpha: 0,
       scale: 1,
-      duration: 600,
+      duration: 620,
       ease: "Cubic.Out",
     });
   }
