@@ -141,6 +141,7 @@ class AppleTenScene extends Phaser.Scene {
     this.selectedSet = new Set();
     this.currentSum = 0;
     this.score = 0;
+    this.combo = 0;
     this.bestScore = Number(localStorage.getItem(BEST_KEY) || 0);
     this.dragging = false;
     this.busy = false;
@@ -171,6 +172,16 @@ class AppleTenScene extends Phaser.Scene {
     });
 
     this.initBoard();
+    this.comboText = this.add.text(GAME_WIDTH / 2, 88, "", {
+      fontFamily: "Black Han Sans",
+      fontSize: "34px",
+      color: "#d6542f",
+      stroke: "#fff3dc",
+      strokeThickness: 7,
+    });
+    this.comboText.setOrigin(0.5);
+    this.comboText.setAlpha(0);
+
     this.bindInput();
     this.hookDomControls();
     this.refreshHud();
@@ -311,6 +322,7 @@ class AppleTenScene extends Phaser.Scene {
       this.clearSelection();
       this.currentSum = 0;
       this.score = 0;
+      this.combo = 0;
       this.initBoard();
       this.refreshHud();
     });
@@ -406,18 +418,23 @@ class AppleTenScene extends Phaser.Scene {
     if (this.currentSum !== 10) {
       this.audioEngine.playFail();
       this.cameras.main.shake(90, 0.002);
+      this.combo = 0;
       this.clearSelection();
       return;
     }
 
     this.busy = true;
-    this.audioEngine.playSuccess(this.selected.length);
-    this.score += this.selected.length * 10;
+    this.combo += 1;
+    this.audioEngine.playSuccess(this.selected.length + this.combo);
+    const comboMultiplier = 1 + Math.min(4, this.combo - 1) * 0.25;
+    const earnedScore = Math.round(this.selected.length * 10 * comboMultiplier);
+    this.score += earnedScore;
     this.bestScore = Math.max(this.bestScore, this.score);
     localStorage.setItem(BEST_KEY, String(this.bestScore));
 
     const removed = [...this.selected];
     this.currentSum = 0;
+    this.showComboFeedback(earnedScore, this.combo);
     this.refreshHud();
 
     this.removeCellsWithFx(removed, () => {
@@ -460,7 +477,7 @@ class AppleTenScene extends Phaser.Scene {
       });
     }
 
-    const pop = this.add.text(270, 92, `+${cells.length * 10}`, {
+    const pop = this.add.text(270, 92, `+${Math.round(cells.length * 10 * (1 + Math.min(4, this.combo - 1) * 0.25))}`, {
       fontFamily: "Black Han Sans",
       fontSize: "38px",
       color: "#cb3b27",
@@ -539,6 +556,27 @@ class AppleTenScene extends Phaser.Scene {
     if (tweenCount === 0) {
       done();
     }
+  }
+
+  showComboFeedback(earnedScore, combo) {
+    if (combo <= 1) {
+      this.comboText.setText("좋아!");
+    } else {
+      this.comboText.setText(`${combo} COMBO x${(1 + Math.min(4, combo - 1) * 0.25).toFixed(2)} (+${earnedScore})`);
+    }
+
+    this.comboText.setY(88);
+    this.comboText.setAlpha(1);
+    this.comboText.setScale(0.65);
+
+    this.tweens.add({
+      targets: this.comboText,
+      y: 58,
+      alpha: 0,
+      scale: 1,
+      duration: 600,
+      ease: "Cubic.Out",
+    });
   }
 }
 
