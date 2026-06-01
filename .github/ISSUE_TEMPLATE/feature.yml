@@ -1,0 +1,50 @@
+name: 기능 요청
+description: 새로운 기능을 제안합니다.
+title: "[Feature] "
+labels: ["type:feature"]
+body:
+  - type: dropdown
+    id: area
+    attributes:
+      label: 영역
+      description: 해당 기능의 주 영역을 선택해 주세요.
+      options:
+        - gameplay
+        - ui-ux
+        - audio
+    validations:
+      required: true
+  - type: dropdown
+    id: target_milestone
+    attributes:
+      label: 목표 마일스톤
+      description: 권장 마일스톤을 선택해 주세요.
+      options:
+        - M1 - Core Gameplay
+        - M2 - UX & Audio Polish
+    validations:
+      required: true
+  - type: textarea
+    id: background
+    attributes:
+      label: 배경
+      description: 왜 필요한지 적어 주세요.
+      placeholder: 현재 문제/요구 상황
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: 작업 범위
+      description: 구현할 항목을 체크리스트로 작성해 주세요.
+      placeholder: "- [ ] 항목 1\n- [ ] 항목 2"
+    validations:
+      required: true
+  - type: textarea
+    id: done_criteria
+    attributes:
+      label: 완료 조건
+      description: 완료를 판단할 수 있는 기준을 적어 주세요.
+      placeholder: "- [ ] 조건 1\n- [ ] 조건 2"
+    validations:
+      required: true

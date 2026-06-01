@@ -1,0 +1,46 @@
+name: 개선 요청
+description: 기존 기능/UI/오디오를 개선합니다.
+title: "[Enhancement] "
+labels: ["type:enhancement"]
+body:
+  - type: dropdown
+    id: area
+    attributes:
+      label: 영역
+      description: 개선 영역을 선택해 주세요.
+      options:
+        - gameplay
+        - ui-ux
+        - audio
+    validations:
+      required: true
+  - type: dropdown
+    id: target_milestone
+    attributes:
+      label: 목표 마일스톤
+      options:
+        - M1 - Core Gameplay
+        - M2 - UX & Audio Polish
+    validations:
+      required: true
+  - type: textarea
+    id: as_is
+    attributes:
+      label: 현재 상태 (AS-IS)
+      placeholder: 현재 동작/문제점
+    validations:
+      required: true
+  - type: textarea
+    id: to_be
+    attributes:
+      label: 기대 상태 (TO-BE)
+      placeholder: 개선 후 기대 동작
+    validations:
+      required: true
+  - type: textarea
+    id: done_criteria
+    attributes:
+      label: 완료 조건
+      placeholder: "- [ ] 조건 1\n- [ ] 조건 2"
+    validations:
+      required: true

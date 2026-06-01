@@ -1,0 +1,39 @@
+name: Issue Triage
+
+on:
+  issues:
+    types: [opened, reopened, edited, labeled]
+
+permissions:
+  issues: write
+
+jobs:
+  assign-milestone:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Auto assign milestone
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issue = context.payload.issue;
+            if (!issue) return;
+            if (issue.milestone) return;
+
+            const labels = (issue.labels || []).map((l) => l.name);
+            if (labels.includes('process:retro')) return;
+
+            let milestone = null;
+            if (labels.includes('type:refactor')) {
+              milestone = 1; // M0 - Foundation
+            } else if (labels.includes('area:audio') || labels.includes('area:ui-ux')) {
+              milestone = 3; // M2 - UX & Audio Polish
+            } else {
+              milestone = 2; // M1 - Core Gameplay
+            }
+
+            await github.rest.issues.update({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issue.number,
+              milestone,
+            });
