@@ -374,15 +374,18 @@ class AppleTenScene extends Phaser.Scene {
     const valueText = this.add.text(0, 2, String(value), {
       fontFamily: "Black Han Sans",
       fontSize: "28px",
+      fontStyle: "normal",
       color: "#fff6ec",
       stroke: "#7a1b11",
       strokeThickness: 6,
     });
     valueText.setOrigin(0.5);
+    valueText.setResolution(2);
 
     const container = this.add.container(pos.x, startY, [body, shine, stem, leaf, ring, valueText]);
     container.setSize(CELL_SIZE, CELL_SIZE);
     container.setDepth(5 + row);
+    container.setScale(1);
 
     if (dropFromTop) {
       container.alpha = 0;
@@ -567,6 +570,8 @@ class AppleTenScene extends Phaser.Scene {
     const key = `${cell.row}-${cell.col}`;
     if (this.selectedSet.has(key)) return;
 
+    this.tweens.killTweensOf(cell.container);
+    cell.container.setScale(1);
     this.selected.push(cell);
     this.selectedSet.add(key);
     this.currentSum += cell.value;
@@ -606,6 +611,8 @@ class AppleTenScene extends Phaser.Scene {
     for (const cell of this.selected) {
       if (!cell.container.active) continue;
       this.resetCellRing(cell);
+      this.tweens.killTweensOf(cell.container);
+      cell.container.setScale(1);
       this.tweens.add({
         targets: cell.container,
         scaleX: 1,
@@ -995,18 +1002,45 @@ class AppleTenScene extends Phaser.Scene {
   }
 }
 
-const game = new Phaser.Game({
-  type: Phaser.AUTO,
-  width: GAME_WIDTH,
-  height: GAME_HEIGHT,
-  parent: "game-root",
-  backgroundColor: "#eef8ff",
-  scene: [AppleTenScene],
-  scale: {
-    mode: Phaser.Scale.FIT,
-    autoCenter: Phaser.Scale.CENTER_BOTH,
-  },
-});
+let game = null;
+
+async function waitForGameFonts() {
+  if (!document.fonts || !document.fonts.load) {
+    return;
+  }
+
+  try {
+    await Promise.all([
+      document.fonts.load('28px "Black Han Sans"'),
+      document.fonts.load('28px "Gowun Dodum"'),
+    ]);
+  } catch {
+    // Fallback gracefully when font loading API is unavailable.
+  }
+}
+
+async function bootstrapGame() {
+  await waitForGameFonts();
+
+  game = new Phaser.Game({
+    type: Phaser.AUTO,
+    width: GAME_WIDTH,
+    height: GAME_HEIGHT,
+    parent: "game-root",
+    backgroundColor: "#eef8ff",
+    scene: [AppleTenScene],
+    scale: {
+      mode: Phaser.Scale.FIT,
+      autoCenter: Phaser.Scale.CENTER_BOTH,
+    },
+    render: {
+      roundPixels: true,
+      antialias: true,
+    },
+  });
+}
+
+bootstrapGame();
 
 window.addEventListener("beforeunload", () => {
   if (game && game.destroy) {
