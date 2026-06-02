@@ -213,31 +213,33 @@ class AppleTenScene extends Phaser.Scene {
 
     this.initBoard();
 
-    this.comboBadge = this.add.rectangle(GAME_WIDTH / 2, 86, 360, 52, 0x2f2016, 0.82);
-    this.comboBadge.setStrokeStyle(3, 0xffdc9f, 0.95);
+    this.comboBadge = this.add.rectangle(GAME_WIDTH / 2, 86, 360, 52, 0x1f2d3a, 0.86);
+    this.comboBadge.setStrokeStyle(2, 0xd6b27a, 0.9);
     this.comboBadge.setVisible(false);
 
     this.comboText = this.add.text(GAME_WIDTH / 2, 88, "", {
-      fontFamily: "Black Han Sans",
-      fontSize: "30px",
-      color: "#fff6d8",
-      stroke: "#6f2a19",
-      strokeThickness: 6,
+      fontFamily: "Noto Sans KR",
+      fontStyle: "700",
+      fontSize: "29px",
+      color: "#f4efe5",
+      stroke: "#243646",
+      strokeThickness: 5,
     });
     this.comboText.setOrigin(0.5);
     this.comboText.setAlpha(0);
 
     this.createTutorialOverlay();
 
-    this.statusBadge = this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, 360, 70, 0x2d1e15, 0.8);
-    this.statusBadge.setStrokeStyle(3, 0xffd79d, 0.95);
+    this.statusBadge = this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, 372, 78, 0x1b2835, 0.85);
+    this.statusBadge.setStrokeStyle(2, 0xc9a675, 0.92);
 
     this.statusText = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2, "게임 시작 버튼을 눌러주세요", {
-      fontFamily: "Black Han Sans",
-      fontSize: "34px",
-      color: "#fff4d1",
-      stroke: "#5f2a18",
-      strokeThickness: 6,
+      fontFamily: "Noto Sans KR",
+      fontStyle: "700",
+      fontSize: "32px",
+      color: "#f8f2e7",
+      stroke: "#25384a",
+      strokeThickness: 5,
       align: "center",
     });
     this.statusText.setOrigin(0.5);
@@ -268,34 +270,37 @@ class AppleTenScene extends Phaser.Scene {
   createTutorialOverlay() {
     this.tutorialOverlay = this.add.layer();
 
-    const dim = this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x20120a, 0.5);
-    const card = this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2 + 12, 430, 250, 0xfff5e6, 0.96);
-    card.setStrokeStyle(4, 0xb96d34, 1);
+    const dim = this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x0f1720, 0.54);
+    const card = this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2 + 12, 430, 250, 0xf8f4ec, 0.97);
+    card.setStrokeStyle(2, 0xa97a47, 1);
 
     const title = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 - 78, "플레이 방법", {
-      fontFamily: "Black Han Sans",
-      fontSize: "40px",
-      color: "#7b2b1a",
-      stroke: "#fffaf0",
-      strokeThickness: 6,
+      fontFamily: "Noto Sans KR",
+      fontStyle: "700",
+      fontSize: "38px",
+      color: "#1d2a36",
+      stroke: "#ffffff",
+      strokeThickness: 4,
     });
     title.setOrigin(0.5);
 
     const guide = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 - 8, "1) 숫자 사과를 드래그해서 연결\n2) 합이 10이면 사과가 터짐\n3) 위 사과가 내려와 빈칸 채움", {
-      fontFamily: "Gowun Dodum",
-      fontSize: "28px",
-      color: "#3d2a22",
+      fontFamily: "Noto Sans KR",
+      fontStyle: "500",
+      fontSize: "25px",
+      color: "#3c4956",
       align: "center",
-      lineSpacing: 10,
+      lineSpacing: 8,
     });
     guide.setOrigin(0.5);
 
     const hint = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 + 92, "상단 '게임 시작' 버튼으로 시작", {
-      fontFamily: "Black Han Sans",
-      fontSize: "26px",
-      color: "#cf3f29",
-      stroke: "#fff3df",
-      strokeThickness: 5,
+      fontFamily: "Noto Sans KR",
+      fontStyle: "700",
+      fontSize: "23px",
+      color: "#8f4d2f",
+      stroke: "#ffffff",
+      strokeThickness: 3,
     });
     hint.setOrigin(0.5);
 
@@ -312,22 +317,40 @@ class AppleTenScene extends Phaser.Scene {
 
   drawBackground() {
     const bg = this.add.graphics();
-    bg.fillGradientStyle(0xdff4ff, 0xdff4ff, 0xf6ffd6, 0xf6ffd6, 1);
+    bg.fillGradientStyle(0xe5e2d9, 0xe5e2d9, 0xcfd7df, 0xcfd7df, 1);
     bg.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
 
-    const stripe = this.add.graphics();
-    stripe.fillStyle(0xffffff, 0.2);
-    for (let i = 0; i < 12; i += 1) {
-      stripe.fillRoundedRect(-160 + i * 78, 60, 58, 640, 16);
+    const sheen = this.add.graphics();
+    sheen.fillStyle(0xffffff, 0.14);
+    for (let i = 0; i < 9; i += 1) {
+      sheen.fillRoundedRect(-120 + i * 88, 42, 62, 680, 20);
     }
+
+    const vignette = this.add.graphics();
+    vignette.fillStyle(0x0e1720, 0.07);
+    vignette.fillRect(0, 0, GAME_WIDTH, 44);
+    vignette.fillRect(0, GAME_HEIGHT - 48, GAME_WIDTH, 48);
+    vignette.fillRect(0, 0, 32, GAME_HEIGHT);
+    vignette.fillRect(GAME_WIDTH - 32, 0, 32, GAME_HEIGHT);
   }
 
   createBoardFrame() {
     const frame = this.add.graphics();
-    frame.fillStyle(0xfff4dd, 0.94);
-    frame.lineStyle(6, 0xb96d34, 1);
-    frame.fillRoundedRect(BOARD_X - 16, BOARD_Y - 16, COLS * CELL_SIZE + 32, ROWS * CELL_SIZE + 32, 24);
-    frame.strokeRoundedRect(BOARD_X - 16, BOARD_Y - 16, COLS * CELL_SIZE + 32, ROWS * CELL_SIZE + 32, 24);
+    frame.fillStyle(0xf8f6f0, 0.9);
+    frame.lineStyle(4, 0x8f6a43, 1);
+    frame.fillRoundedRect(BOARD_X - 14, BOARD_Y - 14, COLS * CELL_SIZE + 28, ROWS * CELL_SIZE + 28, 20);
+    frame.strokeRoundedRect(BOARD_X - 14, BOARD_Y - 14, COLS * CELL_SIZE + 28, ROWS * CELL_SIZE + 28, 20);
+
+    const inner = this.add.graphics();
+    inner.lineStyle(1, 0x7d8d9f, 0.18);
+    for (let r = 0; r <= ROWS; r += 1) {
+      const y = BOARD_Y + r * CELL_SIZE;
+      inner.lineBetween(BOARD_X, y, BOARD_X + COLS * CELL_SIZE, y);
+    }
+    for (let c = 0; c <= COLS; c += 1) {
+      const x = BOARD_X + c * CELL_SIZE;
+      inner.lineBetween(x, BOARD_Y, x, BOARD_Y + ROWS * CELL_SIZE);
+    }
   }
 
   initBoard() {
@@ -360,24 +383,24 @@ class AppleTenScene extends Phaser.Scene {
     const pos = this.getCellPosition(row, col);
     const startY = dropFromTop ? BOARD_Y - Phaser.Math.Between(1, 5) * CELL_SIZE : pos.y;
 
-    const body = this.add.circle(0, 0, APPLE_RADIUS, 0xda3d2d);
-    body.setStrokeStyle(3, 0x992014, 1);
+    const body = this.add.circle(0, 0, APPLE_RADIUS, 0xb63b31);
+    body.setStrokeStyle(2, 0x6f221d, 1);
 
-    const shine = this.add.circle(-10, -10, 8, 0xffffff, 0.35);
-    const stem = this.add.rectangle(0, -APPLE_RADIUS - 6, 4, 14, 0x6f401e);
-    const leaf = this.add.ellipse(10, -APPLE_RADIUS - 10, 16, 9, 0x3ea94f);
+    const shine = this.add.circle(-9, -10, 7, 0xffffff, 0.28);
+    const stem = this.add.rectangle(0, -APPLE_RADIUS - 6, 4, 14, 0x4f3a26);
+    const leaf = this.add.ellipse(10, -APPLE_RADIUS - 10, 16, 9, 0x4b8a5d);
 
     const ring = this.add.circle(0, 0, APPLE_RADIUS + 7);
     ring.setStrokeStyle(4, RING_COLOR_DEFAULT, 1);
     ring.setVisible(false);
 
     const valueText = this.add.text(0, 2, String(value), {
-      fontFamily: "Black Han Sans",
+      fontFamily: "Noto Sans KR",
       fontSize: "28px",
-      fontStyle: "normal",
-      color: "#fff6ec",
-      stroke: "#7a1b11",
-      strokeThickness: 6,
+      fontStyle: "700",
+      color: "#fff9f2",
+      stroke: "#5f241d",
+      strokeThickness: 5,
     });
     valueText.setOrigin(0.5);
     valueText.setResolution(2);
@@ -698,11 +721,11 @@ class AppleTenScene extends Phaser.Scene {
     }
 
     const pop = this.add.text(270, 92, `+${Math.round(cells.length * 10 * (1 + Math.min(4, this.combo - 1) * 0.25))}`, {
-      fontFamily: "Black Han Sans",
-      fontSize: "38px",
-      color: "#cb3b27",
-      stroke: "#fff3d7",
-      strokeThickness: 8,
+      fontFamily: "Playfair Display",
+      fontSize: "40px",
+      color: "#8f4d2f",
+      stroke: "#f5efe4",
+      strokeThickness: 7,
     });
     pop.setOrigin(0.5);
 
@@ -1011,8 +1034,8 @@ async function waitForGameFonts() {
 
   try {
     await Promise.all([
-      document.fonts.load('28px "Black Han Sans"'),
-      document.fonts.load('28px "Gowun Dodum"'),
+      document.fonts.load('700 28px "Noto Sans KR"'),
+      document.fonts.load('700 30px "Playfair Display"'),
     ]);
   } catch {
     // Fallback gracefully when font loading API is unavailable.
