@@ -102,19 +102,19 @@ flowchart TB
 
 ```mermaid
 flowchart TD
-  root[applegame]
-  root --> index[index.html]
-  root --> style[style.css]
-  root --> game[game.js]
-  root --> readme[README.md]
-  root --> docs[docs/]
-  docs --> shots[screenshots/]
-  shots --> mainpng[game-main.png]
-  root --> github[.github/]
-  github --> issue[ISSUE_TEMPLATE/]
-  github --> workflows[workflows/]
-  workflows --> deploy[deploy-pages.yml]
-  workflows --> triage[issue-triage.yml]
+  n_root[applegame]
+  n_root --> n_index[index.html]
+  n_root --> n_css[style.css]
+  n_root --> n_game[game.js]
+  n_root --> n_readme[README.md]
+  n_root --> n_docs[docs]
+  n_docs --> n_shots[screenshots]
+  n_shots --> n_mainpng[game-main.png]
+  n_root --> n_github[.github]
+  n_github --> n_issue_template[ISSUE_TEMPLATE]
+  n_github --> n_workflows[workflows]
+  n_workflows --> n_deploy[deploy-pages.yml]
+  n_workflows --> n_triage[issue-triage.yml]
 ```
 
 ## 4) 코드 핵심 포인트
